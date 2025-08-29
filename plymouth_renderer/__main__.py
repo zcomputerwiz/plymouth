@@ -32,11 +32,13 @@ def main():
     renderer.interpreter = interpreter # Complete the circular reference
 
     # 2. Read and parse the script
-    logger.info(f"Testing Window.SetBackground...")
-    source = """
-        Window.SetBackgroundTopColor(0, 0, 0);
-        Window.SetBackgroundBottomColor(0, 0, 1); # Blue
-    """
+    logger.info(f"Loading script: {script_path}")
+    try:
+        with open(script_path, 'r') as f:
+            source = f.read()
+    except FileNotFoundError:
+        logger.error(f"Script file not found: {script_path}")
+        sys.exit(1)
 
     tokens = list(Tokenizer(source).tokenize())
     parser = Parser(tokens)

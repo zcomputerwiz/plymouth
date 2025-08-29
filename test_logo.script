@@ -3,8 +3,8 @@
 # Set a background color
 Plymouth.SetBackgroundColor(0.2, 0.3, 0.5);
 
-# Load a logo image. Using a real PNG file.
-logo_image = Image.New("themes/spinfinity/animation-0001.png");
+# Load a logo image. Using a real PNG file from the script's theme directory.
+logo_image = Image.New("box.png");
 logo_sprite = Sprite.New(logo_image);
 
 # State variable for the animation
