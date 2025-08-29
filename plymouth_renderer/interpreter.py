@@ -67,8 +67,6 @@ class Interpreter:
         setup_plymouth_library(self, self.renderer)
         setup_window_library(self, self.renderer)
 
-        # For testing arrays
-        self.globals.define("my_array", ListObject())
 
     def tick(self):
         """Called by the renderer on every frame to run the refresh callback."""

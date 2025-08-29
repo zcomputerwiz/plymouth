@@ -17,7 +17,8 @@ class ImageObject(Hash):
         self.set("GetHeight", NativeFunction(self.get_height))
         self.set("Scale", NativeFunction(self.scale))
         self.set("Crop", NativeFunction(self.crop))
-        # TODO: Add Rotate methods
+        self.set("Rotate", NativeFunction(self.rotate))
+        self.set("Tile", NativeFunction(self.tile))
 
     def __repr__(self):
         return f"<Image {self.surface.get_width()}x{self.surface.get_height()}>"
@@ -50,6 +51,24 @@ class ImageObject(Hash):
         cropped_surface = pygame.Surface((width, height), flags=pygame.SRCALPHA)
         cropped_surface.blit(self.surface, (0, 0), (x, y, width, height))
         return ImageObject(cropped_surface)
+
+    def rotate(self, interpreter, args):
+        if len(args) != 1 or not isinstance(args[0], Number):
+            raise TypeError("Rotate() expects one number argument (angle in degrees).")
+        angle = args[0].value
+        rotated_surface = pygame.transform.rotate(self.surface, angle)
+        return ImageObject(rotated_surface)
+
+    def tile(self, interpreter, args):
+        if len(args) != 2 or not isinstance(args[0], Number) or not isinstance(args[1], Number):
+            raise TypeError("Tile() expects two number arguments (width, height).")
+        width, height = int(args[0].value), int(args[1].value)
+
+        tiled_surface = pygame.Surface((width, height), flags=pygame.SRCALPHA)
+        for x in range(0, width, self.surface.get_width()):
+            for y in range(0, height, self.surface.get_height()):
+                tiled_surface.blit(self.surface, (x, y))
+        return ImageObject(tiled_surface)
 
 # --- "Static" Methods on the global Image object ---
 

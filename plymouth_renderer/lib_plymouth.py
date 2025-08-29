@@ -24,6 +24,23 @@ def plymouth_set_refresh_function(interpreter, args):
     interpreter.refresh_callback = args[0]
     return Null()
 
+def plymouth_get_mode(interpreter, args):
+    """Returns the current boot mode."""
+    # We can hardcode this for the simulation
+    return String("boot")
+
+def plymouth_get_capslock_state(interpreter, args):
+    """Returns the capslock state."""
+    # We can hardcode this for the simulation
+    return Number(0) # 0 for off
+
+def plymouth_set_refresh_rate(interpreter, args):
+    """Sets the refresh rate of the renderer."""
+    if len(args) != 1 or not isinstance(args[0], Number):
+        raise TypeError("SetRefreshRate expects one number argument.")
+    interpreter.renderer.refresh_rate = args[0].value
+    return Null()
+
 def setup_plymouth_library(interpreter, renderer):
     """Creates the 'Plymouth' object and adds it to the interpreter's global scope."""
 
@@ -43,6 +60,9 @@ def setup_plymouth_library(interpreter, renderer):
     plymouth_global_object = Hash({
         "SetBackgroundColor": NativeFunction(plymouth_set_background_color),
         "SetRefreshFunction": NativeFunction(plymouth_set_refresh_function),
+        "SetRefreshRate": NativeFunction(plymouth_set_refresh_rate),
+        "GetMode": NativeFunction(plymouth_get_mode),
+        "GetCapslockState": NativeFunction(plymouth_get_capslock_state),
         "SetDisplayNormalFunction": generic_callback_setter("display_normal_callback"),
         "SetDisplayPasswordFunction": generic_callback_setter("display_password_callback"),
         "SetBootProgressFunction": generic_callback_setter("boot_progress_callback"),

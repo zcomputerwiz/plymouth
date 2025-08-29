@@ -13,6 +13,7 @@ class Renderer:
         self.sprites = []
         self.running = False
         self.clock = pygame.time.Clock()
+        self.refresh_rate = 60 # Default refresh rate
         self.background_top_color = (0, 0, 0)
         self.background_bottom_color = (0, 0, 0)
 
@@ -72,7 +73,7 @@ class Renderer:
             pygame.display.flip()
 
             # Cap the frame rate
-            self.clock.tick(60) # 60 FPS
+            self.clock.tick(self.refresh_rate)
 
         pygame.quit()
 

@@ -41,7 +41,6 @@ class Parser:
         elif self.current_token.type == 'LBRACE':
             return self.block()
         else:
-            # Default to an expression statement
             expr = self.expression()
             self.eat('SEMI')
             return ast.ExpressionStatement(expr)
@@ -61,19 +60,11 @@ class Parser:
     def for_statement(self):
         self.eat('FOR')
         self.eat('LPAREN')
-
-        initializer = self.expression()
-        self.eat('SEMI')
-
-        condition = self.expression()
-        self.eat('SEMI')
-
+        initializer = self.expression(); self.eat('SEMI')
+        condition = self.expression(); self.eat('SEMI')
         increment = self.expression()
-
         self.eat('RPAREN')
-
         body = self.statement()
-
         return ast.ForStatement(initializer, condition, increment, body)
 
     def block(self):
@@ -86,122 +77,80 @@ class Parser:
 
     def fun_declaration(self):
         self.eat('FUN')
-        name = self.current_token.value
-        self.eat('ID')
+        name = self.current_token.value; self.eat('ID')
         self.eat('LPAREN')
         params = []
         if self.current_token.type != 'RPAREN':
-            params.append(self.current_token.value)
-            self.eat('ID')
+            params.append(self.current_token.value); self.eat('ID')
             while self.current_token.type == 'COMMA':
                 self.advance()
-                params.append(self.current_token.value)
-                self.eat('ID')
+                params.append(self.current_token.value); self.eat('ID')
         self.eat('RPAREN')
         body = self.block()
         return ast.FunctionDef(name, params, body)
 
-    def expression(self):
-        return self.assignment()
-
+    def expression(self): return self.assignment()
     def assignment(self):
         node = self.logic_or()
         if self.current_token and self.current_token.type.startswith('OP_ASSIGN'):
-            op = self.current_token
-            self.advance()
-            # Assignment is right-associative
+            op = self.current_token; self.advance()
             right = self.assignment()
             return ast.Assignment(node, op, right)
         return node
-
     def logic_or(self):
         node = self.logic_and()
         while self.current_token and self.current_token.type == 'OP_OR':
-            op = self.current_token
-            self.advance()
+            op = self.current_token; self.advance()
             right = self.logic_and()
             node = ast.BinaryOp(left=node, op=op, right=right)
         return node
-
     def logic_and(self):
         node = self.equality()
         while self.current_token and self.current_token.type == 'OP_AND':
-            op = self.current_token
-            self.advance()
+            op = self.current_token; self.advance()
             right = self.equality()
             node = ast.BinaryOp(left=node, op=op, right=right)
         return node
-
     def equality(self):
         node = self.comparison()
         while self.current_token and self.current_token.type in ('OP_EQ', 'OP_NE'):
-            op = self.current_token
-            self.advance()
+            op = self.current_token; self.advance()
             right = self.comparison()
             node = ast.BinaryOp(left=node, op=op, right=right)
         return node
-
     def comparison(self):
         node = self.term()
         while self.current_token and self.current_token.type in ('OP_GT', 'OP_GE', 'OP_LT', 'OP_LE'):
-            op = self.current_token
-            self.advance()
+            op = self.current_token; self.advance()
             right = self.term()
             node = ast.BinaryOp(left=node, op=op, right=right)
         return node
-
-    def equality(self):
-        node = self.comparison()
-        while self.current_token and self.current_token.type in ('OP_EQ', 'OP_NE'):
-            op = self.current_token
-            self.advance()
-            right = self.comparison()
-            node = ast.BinaryOp(left=node, op=op, right=right)
-        return node
-
-    def comparison(self):
-        node = self.term()
-        while self.current_token and self.current_token.type in ('OP_GT', 'OP_GE', 'OP_LT', 'OP_LE'):
-            op = self.current_token
-            self.advance()
-            right = self.term()
-            node = ast.BinaryOp(left=node, op=op, right=right)
-        return node
-
     def term(self):
         node = self.factor()
         while self.current_token and self.current_token.type in ('OP_PLUS', 'OP_MINUS'):
-            op = self.current_token
-            self.advance()
+            op = self.current_token; self.advance()
             right = self.factor()
             node = ast.BinaryOp(left=node, op=op, right=right)
         return node
-
     def factor(self):
         node = self.unary()
         while self.current_token and self.current_token.type in ('OP_MUL', 'OP_DIV'):
-            op = self.current_token
-            self.advance()
-            right = self.call()
+            op = self.current_token; self.advance()
+            right = self.unary()
             node = ast.BinaryOp(left=node, op=op, right=right)
         return node
-
     def unary(self):
         if self.current_token and self.current_token.type in ('OP_NOT', 'OP_PLUS', 'OP_MINUS'):
-            op = self.current_token
-            self.advance()
+            op = self.current_token; self.advance()
             operand = self.unary()
             return ast.UnaryOp(op, operand)
         return self.postfix()
-
     def postfix(self):
         node = self.call()
         if self.current_token and self.current_token.type in ('OP_INC', 'OP_DEC'):
-            op = self.current_token
-            self.advance()
+            op = self.current_token; self.advance()
             return ast.PostOp(node, op)
         return node
-
     def call(self):
         node = self.primary()
         while self.current_token:
@@ -217,8 +166,7 @@ class Parser:
                 node = ast.FunctionCall(node, args)
             elif self.current_token.type == 'DOT':
                 self.advance()
-                prop_name = self.current_token.value
-                self.eat('ID')
+                prop_name = self.current_token.value; self.eat('ID')
                 node = ast.PropertyAccess(node, prop_name)
             elif self.current_token.type == 'LBRACK':
                 self.advance()
@@ -228,28 +176,22 @@ class Parser:
             else:
                 break
         return node
-
     def primary(self):
         token = self.current_token
         if token.type == 'NUMBER':
-            self.advance()
-            return ast.Number(token.value)
+            self.advance(); return ast.Number(token.value)
         elif token.type == 'STRING':
-            self.advance()
-            return ast.String(token.value)
+            self.advance(); return ast.String(token.value)
         elif token.type == 'ID':
-            self.advance()
-            return ast.Variable(token.value)
+            self.advance(); return ast.Variable(token.value)
         elif token.type == 'LPAREN':
             self.eat('LPAREN')
             node = self.expression()
             self.eat('RPAREN')
             return node
         elif token.type == 'LOCAL':
-            self.advance()
-            return ast.LocalNode()
+            self.advance(); return ast.LocalNode()
         elif token.type == 'GLOBAL':
-            self.advance()
-            return ast.GlobalNode()
+            self.advance(); return ast.GlobalNode()
         else:
             self.error(f"Unexpected token in primary expression: {token}")
