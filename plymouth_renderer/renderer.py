@@ -13,7 +13,8 @@ class Renderer:
         self.sprites = []
         self.running = False
         self.clock = pygame.time.Clock()
-        self.background_color = (0, 0, 0) # Default to black
+        self.background_top_color = (0, 0, 0)
+        self.background_bottom_color = (0, 0, 0)
 
     def add_sprite(self, sprite_obj):
         """Adds a sprite to the list of sprites to be rendered."""
@@ -51,7 +52,12 @@ class Renderer:
                 self.interpreter.tick()
 
             # Drawing
-            self.screen.fill(self.background_color)
+            height = self.screen.get_height()
+            for y in range(height):
+                r = self.background_top_color[0] + (self.background_bottom_color[0] - self.background_top_color[0]) * y / height
+                g = self.background_top_color[1] + (self.background_bottom_color[1] - self.background_top_color[1]) * y / height
+                b = self.background_top_color[2] + (self.background_bottom_color[2] - self.background_top_color[2]) * y / height
+                pygame.draw.line(self.screen, (r, g, b), (0, y), (self.screen.get_width(), y))
 
             # Draw all sprites in order of their z-index
             self.sprites.sort(key=lambda s: s.z) # Re-sort every frame in case z changes

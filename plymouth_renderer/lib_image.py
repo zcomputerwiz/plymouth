@@ -16,7 +16,8 @@ class ImageObject(Hash):
         self.set("GetWidth", NativeFunction(self.get_width))
         self.set("GetHeight", NativeFunction(self.get_height))
         self.set("Scale", NativeFunction(self.scale))
-        # TODO: Add Rotate, Crop methods
+        self.set("Crop", NativeFunction(self.crop))
+        # TODO: Add Rotate methods
 
     def __repr__(self):
         return f"<Image {self.surface.get_width()}x{self.surface.get_height()}>"
@@ -40,6 +41,15 @@ class ImageObject(Hash):
         height = int(args[1].value)
         scaled_surface = pygame.transform.scale(self.surface, (width, height))
         return ImageObject(scaled_surface)
+
+    def crop(self, interpreter, args):
+        if len(args) != 4 or not all(isinstance(arg, Number) for arg in args):
+            raise TypeError("Crop() expects four number arguments (x, y, width, height).")
+        x, y, width, height = [int(arg.value) for arg in args]
+
+        cropped_surface = pygame.Surface((width, height), flags=pygame.SRCALPHA)
+        cropped_surface.blit(self.surface, (0, 0), (x, y, width, height))
+        return ImageObject(cropped_surface)
 
 # --- "Static" Methods on the global Image object ---
 
