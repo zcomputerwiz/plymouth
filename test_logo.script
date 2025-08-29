@@ -1,0 +1,32 @@
+# Test script for the logo animation
+
+# Set a background color
+Plymouth.SetBackgroundColor(0.2, 0.3, 0.5);
+
+# Load a logo image. Using a real PNG file.
+logo_image = Image.New("themes/spinfinity/animation-0001.png");
+logo_sprite = Sprite.New(logo_image);
+
+# State variable for the animation
+logo_opacity_angle = 0;
+
+# This function will be called on every frame by the renderer
+fun refresh_callback ()
+  {
+    # Update the angle to create an oscillation
+    logo_opacity_angle = logo_opacity_angle + 0.05;
+
+    # Calculate opacity using a cosine wave to make it pulse
+    min_opacity = 0.3;
+    opacity = (Math.Cos(logo_opacity_angle) + 1) / 2; # Scale cos from [-1,1] to [0,1]
+    opacity = opacity * (1 - min_opacity);
+    opacity = opacity + min_opacity;
+
+    # Center the sprite on the screen
+    logo_sprite.SetX (Window.GetWidth()  / 2 - logo_image.GetWidth()  / 2);
+    logo_sprite.SetY (Window.GetHeight() / 2 - logo_image.GetHeight() / 2);
+    logo_sprite.SetOpacity (opacity);
+  }
+
+# Register the function as the refresh callback
+Plymouth.SetRefreshFunction (refresh_callback);

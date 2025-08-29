@@ -1,0 +1,21 @@
+# Sample Plymouth Script
+
+# Set the screen to a resolution of 1024x768
+screen.SetMode(1024, 768)
+
+# Load an image from a file
+my_image = image.New("background.png")
+
+# Create a sprite from the image
+my_sprite = sprite.New(my_image)
+
+# Position the sprite on the screen
+my_sprite.SetX(0)
+my_sprite.SetY(0)
+my_sprite.SetZ(0)
+
+# Display the sprite
+screen.Display(my_sprite)
+
+# Pause for 5 seconds
+system.Pause(5)

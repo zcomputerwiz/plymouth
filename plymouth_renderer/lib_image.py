@@ -1,0 +1,117 @@
+"""
+Implementation of the 'Image' global object for the Plymouth scripting language.
+"""
+import pygame
+from .script_objects import Hash, Number, String, NativeFunction, Null
+
+class ImageObject(Hash):
+    """A script object that represents an image, holding a pygame.Surface."""
+    def __init__(self, surface):
+        super().__init__()
+        if not isinstance(surface, pygame.Surface):
+            raise TypeError("ImageObject must be initialized with a pygame.Surface.")
+        self.surface = surface
+
+        # Populate the object with methods
+        self.set("GetWidth", NativeFunction(self.get_width))
+        self.set("GetHeight", NativeFunction(self.get_height))
+        self.set("Scale", NativeFunction(self.scale))
+        # TODO: Add Rotate, Crop methods
+
+    def __repr__(self):
+        return f"<Image {self.surface.get_width()}x{self.surface.get_height()}>"
+
+    # --- Native Methods for Image instances ---
+
+    def get_width(self, interpreter, args):
+        if args:
+            raise TypeError("GetWidth() takes no arguments.")
+        return Number(self.surface.get_width())
+
+    def get_height(self, interpreter, args):
+        if args:
+            raise TypeError("GetHeight() takes no arguments.")
+        return Number(self.surface.get_height())
+
+    def scale(self, interpreter, args):
+        if len(args) != 2 or not isinstance(args[0], Number) or not isinstance(args[1], Number):
+            raise TypeError("Scale() expects two number arguments (width, height).")
+        width = int(args[0].value)
+        height = int(args[1].value)
+        scaled_surface = pygame.transform.scale(self.surface, (width, height))
+        return ImageObject(scaled_surface)
+
+# --- "Static" Methods on the global Image object ---
+
+def image_new(interpreter, args):
+    """The constructor for creating new images. Corresponds to Image.New()."""
+    if len(args) != 1 or not isinstance(args[0], String):
+        raise TypeError("Image.New() expects one string argument (the path).")
+
+    path = args[0].value
+    if path == "special://logo":
+        # Use a default placeholder for the logo if not found
+        try:
+            surface = pygame.image.load("themes/spinfinity/animation-0001.png").convert_alpha()
+        except (pygame.error, FileNotFoundError):
+            surface = pygame.Surface((100, 100))
+            surface.fill((0, 255, 0)) # Green placeholder
+        return ImageObject(surface)
+
+    try:
+        # Assuming a basic font for Image.Text later
+        pygame.font.init()
+        surface = pygame.image.load(path).convert_alpha()
+        return ImageObject(surface)
+    except (pygame.error, FileNotFoundError) as e:
+        print(f"Runtime Warning: Could not load image '{path}': {e}")
+        return Null()
+
+def image_text(interpreter, args):
+    # Placeholder for Image.Text
+    # This is a complex function that will require more setup (fonts, etc.)
+    print("Warning: Image.Text is not fully implemented yet.")
+    font = pygame.font.Font(None, 36) # Default pygame font
+    text_surface = font.render("Not Implemented", True, (255, 0, 255))
+    return ImageObject(text_surface)
+
+
+# --- Library Setup ---
+
+class ImageFactory:
+    def __init__(self, image_dir):
+        self.image_dir = image_dir
+
+    def new(self, interpreter, args):
+        if len(args) != 1 or not isinstance(args[0], String):
+            raise TypeError("Image.New() expects one string argument (the path).")
+
+        path = args[0].value
+        if path == "special://logo":
+            try:
+                surface = pygame.image.load("themes/spinfinity/animation-0001.png").convert_alpha()
+            except (pygame.error, FileNotFoundError):
+                surface = pygame.Surface((100, 100)); surface.fill((0, 255, 0))
+            return ImageObject(surface)
+
+        full_path = f"{self.image_dir}/{path}"
+        try:
+            pygame.font.init()
+            surface = pygame.image.load(full_path).convert_alpha()
+            return ImageObject(surface)
+        except (pygame.error, FileNotFoundError) as e:
+            print(f"Runtime Warning: Could not load image '{full_path}': {e}")
+            return Null()
+
+def setup_image_library(interpreter, image_dir):
+    """Creates the 'Image' object and adds it to the interpreter's global scope."""
+    factory = ImageFactory(image_dir)
+
+    image_global_object = Hash({
+        "New": NativeFunction(factory.new),
+        "Text": NativeFunction(image_text) # image_text is still a static function
+    })
+
+    interpreter.globals.define("Image", image_global_object)
+
+    return image_global_object
