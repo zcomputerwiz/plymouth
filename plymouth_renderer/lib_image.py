@@ -97,11 +97,40 @@ def image_new(interpreter, args):
         return Null()
 
 def image_text(interpreter, args):
-    # Placeholder for Image.Text
-    # This is a complex function that will require more setup (fonts, etc.)
-    print("Warning: Image.Text is not fully implemented yet.")
-    font = pygame.font.Font(None, 36) # Default pygame font
-    text_surface = font.render("Not Implemented", True, (255, 0, 255))
+    """Renders text to a new image surface."""
+    # text, r, g, b, [alpha=1], [font=None], [align="left"]
+    if len(args) < 4:
+        raise TypeError("Image.Text expects at least 4 arguments (text, r, g, b).")
+
+    text = args[0].value if isinstance(args[0], String) else str(args[0].value)
+    r = int(args[1].value * 255)
+    g = int(args[2].value * 255)
+    b = int(args[3].value * 255)
+
+    alpha = 255
+    if len(args) > 4 and isinstance(args[4], Number):
+        alpha = int(args[4].value * 255)
+
+    font_path = None
+    if len(args) > 5 and isinstance(args[5], String):
+        font_path = args[5].value # TODO: Handle font lookup/paths correctly
+
+    # TODO: Handle alignment argument
+
+    try:
+        # A default font in case the user-provided one fails or is None
+        font = pygame.font.Font(font_path, 24) # Default size 24
+    except (IOError, pygame.error):
+        print(f"Warning: Could not load font '{font_path}', using default.")
+        font = pygame.font.Font(None, 24)
+
+    color = (r, g, b)
+
+    # Render with alpha. Pygame's font render doesn't directly support an alpha channel
+    # in the color tuple. We create a surface with alpha and then set it.
+    text_surface = font.render(text, True, color)
+    text_surface.set_alpha(alpha)
+
     return ImageObject(text_surface)
 
 
