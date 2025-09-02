@@ -7,6 +7,7 @@ from .tokenizer import Tokenizer
 from .parser import Parser
 from .interpreter import Interpreter
 from .renderer import Renderer
+from .script_objects import Number, String
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -57,17 +58,17 @@ def main():
             logger.info("Simulating boot progress...")
             for i in range(11):
                 progress = i / 10.0
-                interpreter.execute_function(interpreter.boot_progress_callback, [interpreter.script_objects.Number(0.1), interpreter.script_objects.Number(progress)])
+                interpreter.execute_function(interpreter.boot_progress_callback, [Number(0.1), Number(progress)])
                 time.sleep(0.2)
 
         if interpreter.display_message_callback:
             logger.info("Simulating display message...")
-            interpreter.execute_function(interpreter.display_message_callback, [interpreter.script_objects.String("Updating system...")])
+            interpreter.execute_function(interpreter.display_message_callback, [String("Updating system...")])
             time.sleep(1)
 
         if interpreter.display_password_callback:
             logger.info("Simulating password prompt...")
-            interpreter.execute_function(interpreter.display_password_callback, [interpreter.script_objects.String("Password: "), interpreter.script_objects.Number(3)])
+            interpreter.execute_function(interpreter.display_password_callback, [String("Password: "), Number(3)])
             time.sleep(1)
 
         if interpreter.quit_callback:

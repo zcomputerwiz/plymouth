@@ -4,50 +4,25 @@ import collections
 Token = collections.namedtuple('Token', ['type', 'value', 'line', 'column'])
 
 class Tokenizer:
+    """
+    A lexical scanner that is more faithful to the C implementation.
+    It tokenizes single-character symbols and leaves multi-character
+    operator logic to the parser.
+    """
     def __init__(self, code):
         self.code = code
         self.token_specification = [
-            ('COMMENT',    r'#.*'),
-            ('NEWLINE',    r'\n'),
-            ('WHITESPACE', r'[ \t]+'),
-            ('NUMBER',     r'\d+(\.\d*)?'),
-            ('STRING',     r'"[^"]*"'),
-            ('ID',         r'[A-Za-z_][A-Za-z0-9_]*'),
-            ('LPAREN',     r'\('),
-            ('RPAREN',     r'\)'),
-            ('LBRACE',     r'\{'),
-            ('RBRACE',     r'\}'),
-            ('LBRACK',     r'\['),
-            ('RBRACK',     r'\]'),
-            ('COMMA',      r','),
-            ('SEMI',       r';'),
-            ('DOT',        r'\.'),
-            # Operators - order is important
-            ('OP_OR',      r'\|\|'),
-            ('OP_AND',     r'&&'),
-            ('OP_EQ',      r'=='),
-            ('OP_NE',      r'!='),
-            ('OP_GE',      r'>='),
-            ('OP_LE',      r'<='),
-            ('OP_GT',      r'>'),
-            ('OP_LT',      r'<'),
-            ('OP_ASSIGN_EXTEND', r'\|='),
-            ('OP_ASSIGN_PLUS',   r'\+='),
-            ('OP_ASSIGN_MINUS',  r'-='),
-            ('OP_ASSIGN_MUL',    r'\*='),
-            ('OP_ASSIGN_DIV',    r'/='),
-            ('OP_ASSIGN_MOD',    r'%='),
-            ('OP_ASSIGN',  r'='),
-            ('OP_EXTEND',  r'\|'),
-            ('OP_INC',     r'\+\+'),
-            ('OP_DEC',     r'--'),
-            ('OP_PLUS',    r'\+'),
-            ('OP_MINUS',   r'-'),
-            ('OP_MUL',     r'\*'),
-            ('OP_DIV',     r'/'),
-            ('OP_MOD',     r'%'),
-            ('OP_NOT',     r'!'),
-            ('MISMATCH',   r'.'), # Any other character
+            # Note: order is important for regex matching
+            ('BLOCK_COMMENT', r'/\*.*?\*/'),
+            ('COMMENT',       r'//.*|#.*'),
+            ('NEWLINE',       r'\n'),
+            ('WHITESPACE',    r'[ \t]+'),
+            ('FLOAT',         r'\d+\.\d*'),
+            ('INTEGER',       r'\d+'),
+            ('STRING',        r'"(?:\\.|[^"\\])*"'),
+            ('ID',            r'[A-Za-z_][A-Za-z0-9_]*'),
+            ('SYMBOL',        r'[(){}\[\];,=.<>+\-*/%&|!~^]'), # All single-char symbols
+            ('MISMATCH',      r'.'),
         ]
         self.keywords = {'if', 'else', 'while', 'for', 'do', 'fun', 'return', 'break', 'continue', 'NULL', 'true', 'false', 'this', 'global', 'local'}
 
@@ -55,7 +30,8 @@ class Tokenizer:
         tok_regex = '|'.join('(?P<%s>%s)' % pair for pair in self.token_specification)
         line_num = 1
         line_start = 0
-        for mo in re.finditer(tok_regex, self.code):
+        # Use re.DOTALL to make '.' in block comments match newlines
+        for mo in re.finditer(tok_regex, self.code, re.DOTALL):
             kind = mo.lastgroup
             value = mo.group()
             column = mo.start() - line_start
@@ -64,10 +40,14 @@ class Tokenizer:
                 line_start = mo.end()
                 line_num += 1
                 continue
-            elif kind in ('COMMENT', 'WHITESPACE'):
+            elif kind in ('COMMENT', 'BLOCK_COMMENT', 'WHITESPACE'):
                 continue
+            elif kind == 'STRING':
+                # Unescape the string value, removing the surrounding quotes
+                value = value[1:-1]
+                value = re.sub(r'\\(.)', r'\1', value)
             elif kind == 'MISMATCH':
-                raise RuntimeError(f'{value!r} unexpected on line {line_num}')
+                raise RuntimeError(f'Unexpected character {value!r} on line {line_num}')
 
             if kind == 'ID' and value in self.keywords:
                 kind = value.upper()

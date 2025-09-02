@@ -4,8 +4,8 @@
 Plymouth.SetBackgroundColor(0.2, 0.3, 0.5);
 
 # Load a logo image. Using a real PNG file from the script's theme directory.
-logo_image = Image.New("box.png");
-logo_sprite = Sprite.New(logo_image);
+logo_image = Image("box.png");
+logo_sprite = Sprite(logo_image);
 
 # State variable for the animation
 logo_opacity_angle = 0;

@@ -1,197 +1,216 @@
 """
 A manual recursive descent parser for the Plymouth scripting language.
+This version is designed to work with a simplified token stream, where
+multi-character operators are parsed by looking ahead.
 """
-from .tokenizer import Tokenizer, Token
+from .tokenizer import Token
 from . import ast
 
 class Parser:
     def __init__(self, tokens):
-        self.tokens = iter(tokens)
-        self.current_token = None
-        self.advance()
-
-    def advance(self):
-        try:
-            self.current_token = next(self.tokens)
-        except StopIteration:
-            self.current_token = None
+        self.tokens = list(tokens)
+        self.pos = 0
 
     def error(self, message):
-        raise Exception(f"Parse Error: {message} at {self.current_token}")
+        raise Exception(f"Parse Error: {message} at {self.peek()}")
 
-    def eat(self, token_type):
-        if self.current_token and self.current_token.type == token_type:
-            self.advance()
-        else:
-            self.error(f"Expected token {token_type}, got {self.current_token.type if self.current_token else 'EOF'}")
+    def peek(self, offset=0):
+        if self.pos + offset >= len(self.tokens):
+            return Token('EOF', '', -1, -1)
+        return self.tokens[self.pos + offset]
+
+    def advance(self, amount=1):
+        self.pos += amount
+
+    def consume(self, token_type=None, token_value=None):
+        token = self.peek()
+        if token_type and token.type != token_type:
+            self.error(f"Expected token {token_type}, but got {token.type}")
+        if token_value and token.value != token_value:
+            self.error(f"Expected token value '{token_value}', but got '{token.value}'")
+        self.advance()
+        return token
+
+    def match(self, token_type, token_value=None):
+        if self.peek().type == token_type and (token_value is None or self.peek().value == token_value):
+            return self.consume()
+        return None
+
+    def _match_and_consume_op(self, operators):
+        for op in operators:
+            if all(self.peek(i).value == char for i, char in enumerate(op)):
+                first_token = self.peek()
+                self.advance(len(op))
+                return Token('OPERATOR', op, first_token.line, first_token.column)
+        return None
 
     def parse(self):
         statements = []
-        while self.current_token:
+        while self.peek().type != 'EOF':
             statements.append(self.statement())
         return ast.Program(statements)
 
     def statement(self):
-        if self.current_token.type == 'FUN':
+        if self.match('FUN'):
             return self.fun_declaration()
-        elif self.current_token.type == 'IF':
+        if self.match('IF'):
             return self.if_statement()
-        elif self.current_token.type == 'FOR':
+        if self.match('FOR'):
             return self.for_statement()
-        elif self.current_token.type == 'LBRACE':
+        if self.peek().type == 'SYMBOL' and self.peek().value == '{':
             return self.block()
-        else:
-            expr = self.expression()
-            self.eat('SEMI')
-            return ast.ExpressionStatement(expr)
+
+        expr = self.expression()
+        self.consume('SYMBOL', ';')
+        return ast.ExpressionStatement(expr)
 
     def if_statement(self):
-        self.eat('IF')
-        self.eat('LPAREN')
+        self.consume('SYMBOL', '(')
         condition = self.expression()
-        self.eat('RPAREN')
+        self.consume('SYMBOL', ')')
         then_branch = self.statement()
         else_branch = None
-        if self.current_token and self.current_token.type == 'ELSE':
-            self.advance()
+        if self.match('ELSE'):
             else_branch = self.statement()
         return ast.IfStatement(condition, then_branch, else_branch)
 
     def for_statement(self):
-        self.eat('FOR')
-        self.eat('LPAREN')
-        initializer = self.expression(); self.eat('SEMI')
-        condition = self.expression(); self.eat('SEMI')
+        self.consume('SYMBOL', '(')
+        initializer = self.expression(); self.consume('SYMBOL', ';')
+        condition = self.expression(); self.consume('SYMBOL', ';')
         increment = self.expression()
-        self.eat('RPAREN')
+        self.consume('SYMBOL', ')')
         body = self.statement()
         return ast.ForStatement(initializer, condition, increment, body)
 
     def block(self):
-        self.eat('LBRACE')
+        self.consume('SYMBOL', '{')
         statements = []
-        while self.current_token and self.current_token.type != 'RBRACE':
+        while not (self.peek().type == 'SYMBOL' and self.peek().value == '}'):
             statements.append(self.statement())
-        self.eat('RBRACE')
+        self.consume('SYMBOL', '}')
         return ast.Block(statements)
 
     def fun_declaration(self):
-        self.eat('FUN')
-        name = self.current_token.value; self.eat('ID')
-        self.eat('LPAREN')
+        name = self.consume('ID').value
+        self.consume('SYMBOL', '(')
         params = []
-        if self.current_token.type != 'RPAREN':
-            params.append(self.current_token.value); self.eat('ID')
-            while self.current_token.type == 'COMMA':
-                self.advance()
-                params.append(self.current_token.value); self.eat('ID')
-        self.eat('RPAREN')
+        if not self.match('SYMBOL', ')'):
+            params.append(self.consume('ID').value)
+            while self.match('SYMBOL', ','):
+                params.append(self.consume('ID').value)
+            self.consume('SYMBOL', ')')
         body = self.block()
         return ast.FunctionDef(name, params, body)
 
     def expression(self): return self.assignment()
+
     def assignment(self):
         node = self.logic_or()
-        if self.current_token and self.current_token.type.startswith('OP_ASSIGN'):
-            op = self.current_token; self.advance()
+        op_token = self._match_and_consume_op(['=', '+=', '-=', '*=', '/=', '%='])
+        if op_token:
             right = self.assignment()
-            return ast.Assignment(node, op, right)
+            return ast.Assignment(node, op_token, right)
         return node
+
     def logic_or(self):
         node = self.logic_and()
-        while self.current_token and self.current_token.type == 'OP_OR':
-            op = self.current_token; self.advance()
+        while (op_token := self._match_and_consume_op(['||'])):
             right = self.logic_and()
-            node = ast.BinaryOp(left=node, op=op, right=right)
+            node = ast.BinaryOp(left=node, op=op_token, right=right)
         return node
+
     def logic_and(self):
         node = self.equality()
-        while self.current_token and self.current_token.type == 'OP_AND':
-            op = self.current_token; self.advance()
+        while (op_token := self._match_and_consume_op(['&&'])):
             right = self.equality()
-            node = ast.BinaryOp(left=node, op=op, right=right)
+            node = ast.BinaryOp(left=node, op=op_token, right=right)
         return node
+
     def equality(self):
         node = self.comparison()
-        while self.current_token and self.current_token.type in ('OP_EQ', 'OP_NE'):
-            op = self.current_token; self.advance()
+        while (op_token := self._match_and_consume_op(['==', '!='])):
             right = self.comparison()
-            node = ast.BinaryOp(left=node, op=op, right=right)
+            node = ast.BinaryOp(left=node, op=op_token, right=right)
         return node
+
     def comparison(self):
         node = self.term()
-        while self.current_token and self.current_token.type in ('OP_GT', 'OP_GE', 'OP_LT', 'OP_LE'):
-            op = self.current_token; self.advance()
+        while (op_token := self._match_and_consume_op(['>=', '<=', '>', '<'])):
             right = self.term()
-            node = ast.BinaryOp(left=node, op=op, right=right)
+            node = ast.BinaryOp(left=node, op=op_token, right=right)
         return node
+
     def term(self):
         node = self.factor()
-        while self.current_token and self.current_token.type in ('OP_PLUS', 'OP_MINUS'):
-            op = self.current_token; self.advance()
+        while (op_token := self._match_and_consume_op(['+', '-'])):
             right = self.factor()
-            node = ast.BinaryOp(left=node, op=op, right=right)
+            node = ast.BinaryOp(left=node, op=op_token, right=right)
         return node
+
     def factor(self):
         node = self.unary()
-        while self.current_token and self.current_token.type in ('OP_MUL', 'OP_DIV'):
-            op = self.current_token; self.advance()
+        while (op_token := self._match_and_consume_op(['*', '/', '%'])):
             right = self.unary()
-            node = ast.BinaryOp(left=node, op=op, right=right)
+            node = ast.BinaryOp(left=node, op=op_token, right=right)
         return node
+
     def unary(self):
-        if self.current_token and self.current_token.type in ('OP_NOT', 'OP_PLUS', 'OP_MINUS'):
-            op = self.current_token; self.advance()
+        op_token = self._match_and_consume_op(['!', '+', '-'])
+        if op_token:
             operand = self.unary()
-            return ast.UnaryOp(op, operand)
+            return ast.UnaryOp(op_token, operand)
         return self.postfix()
+
     def postfix(self):
         node = self.call()
-        if self.current_token and self.current_token.type in ('OP_INC', 'OP_DEC'):
-            op = self.current_token; self.advance()
-            return ast.PostOp(node, op)
+        op_token = self._match_and_consume_op(['++', '--'])
+        if op_token:
+            return ast.PostOp(node, op_token)
         return node
+
     def call(self):
         node = self.primary()
-        while self.current_token:
-            if self.current_token.type == 'LPAREN':
-                self.advance()
+        while True:
+            if self.match('SYMBOL', '('):
                 args = []
-                if self.current_token.type != 'RPAREN':
+                if not (self.peek().type == 'SYMBOL' and self.peek().value == ')'):
                     args.append(self.expression())
-                    while self.current_token.type == 'COMMA':
-                        self.advance()
+                    while self.match('SYMBOL', ','):
                         args.append(self.expression())
-                self.eat('RPAREN')
+                self.consume('SYMBOL', ')')
                 node = ast.FunctionCall(node, args)
-            elif self.current_token.type == 'DOT':
-                self.advance()
-                prop_name = self.current_token.value; self.eat('ID')
+            elif self.match('SYMBOL', '.'):
+                prop_name = self.consume('ID').value
                 node = ast.PropertyAccess(node, prop_name)
-            elif self.current_token.type == 'LBRACK':
-                self.advance()
+            elif self.match('SYMBOL', '['):
                 index_expr = self.expression()
-                self.eat('RBRACK')
+                self.consume('SYMBOL', ']')
                 node = ast.IndexAccess(node, index_expr)
             else:
                 break
         return node
+
     def primary(self):
-        token = self.current_token
-        if token.type == 'NUMBER':
-            self.advance(); return ast.Number(token.value)
-        elif token.type == 'STRING':
-            self.advance(); return ast.String(token.value)
-        elif token.type == 'ID':
-            self.advance(); return ast.Variable(token.value)
-        elif token.type == 'LPAREN':
-            self.eat('LPAREN')
+        if self.peek().type == 'INTEGER' or self.peek().type == 'FLOAT':
+            return ast.Number(self.consume().value)
+        elif self.peek().type == 'STRING':
+            return ast.String(self.consume().value)
+        elif self.peek().type == 'ID':
+            return ast.Variable(self.consume().value)
+        elif self.match('SYMBOL', '('):
             node = self.expression()
-            self.eat('RPAREN')
+            self.consume('SYMBOL', ')')
             return node
-        elif token.type == 'LOCAL':
-            self.advance(); return ast.LocalNode()
-        elif token.type == 'GLOBAL':
-            self.advance(); return ast.GlobalNode()
+        elif self.match('LOCAL'):
+            return ast.LocalNode()
+        elif self.match('GLOBAL'):
+            return ast.GlobalNode()
+        elif self.match('NULL'):
+            return ast.Null()
+        elif self.match('TRUE'):
+            return ast.Boolean(True)
+        elif self.match('FALSE'):
+            return ast.Boolean(False)
         else:
-            self.error(f"Unexpected token in primary expression: {token}")
+            self.error(f"Unexpected token in primary expression: {self.peek()}")

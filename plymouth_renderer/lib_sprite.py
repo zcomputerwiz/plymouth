@@ -1,7 +1,7 @@
 """
 Implementation of the 'Sprite' global object and Sprite instances.
 """
-from .script_objects import Hash, Number, NativeFunction, Null
+from .script_objects import Hash, Number, NativeFunction, Null, CallableObject
 from .lib_image import ImageObject
 
 class SpriteObject(Hash):
@@ -113,9 +113,12 @@ def setup_sprite_library(interpreter, renderer):
     # Attach renderer to interpreter so native functions can access it
     interpreter.renderer = renderer
 
-    sprite_global_object = Hash({
-        "New": NativeFunction(sprite_new)
-    })
+    sprite_global_object = CallableObject(
+        python_callable=sprite_new,
+        members={
+            "New": NativeFunction(sprite_new)
+        }
+    )
 
     interpreter.globals.define("Sprite", sprite_global_object)
 
