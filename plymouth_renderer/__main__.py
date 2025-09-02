@@ -49,7 +49,8 @@ def main():
     if test_mode:
         import time
         logger.info("Running in test mode.")
-        renderer.run_in_thread()
+        # The test mode is non-interactive and doesn't need a running renderer loop.
+        # We just need to interpret the script to set up the callbacks.
         interpreter.interpret(program_ast)
         logger.info("Script interpreted. Simulating boot events...")
 
