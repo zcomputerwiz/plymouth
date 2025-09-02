@@ -1,8 +1,11 @@
 """
 Implementation of the 'Sprite' global object and Sprite instances.
 """
+import logging
 from .script_objects import Hash, Number, NativeFunction, Null, CallableObject
 from .lib_image import ImageObject
+
+logger = logging.getLogger(__name__)
 
 class SpriteObject(Hash):
     """A script object representing a sprite on the screen."""
@@ -103,7 +106,9 @@ def sprite_new(interpreter, args):
     elif len(args) > 1:
         raise TypeError("Sprite.New expects at most one argument.")
 
-    return SpriteObject(image_obj, interpreter.renderer)
+    sprite = SpriteObject(image_obj, interpreter.renderer)
+    logger.info(f"Created new sprite: {sprite}")
+    return sprite
 
 # --- Library Setup ---
 

@@ -79,11 +79,11 @@ def main():
         renderer.stop()
         logger.info("Test finished.")
     else:
-        # In normal mode, the renderer runs in a thread, and the script
-        # executes on the main thread. The program exits when the window is closed.
-        renderer.run_in_thread()
-        interpreter.interpret(program_ast)
-        # The renderer thread will keep the application alive until the window is closed.
+        # In normal mode, the interpreter runs in a background thread, while
+        # the renderer and its event loop run on the main thread, as is
+        # standard for PyGame applications.
+        interpreter.interpret_in_thread(program_ast)
+        renderer.run()
 
 if __name__ == "__main__":
     main()

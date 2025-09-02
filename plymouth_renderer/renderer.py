@@ -33,12 +33,6 @@ class Renderer:
         """Sets the background color of the screen."""
         self.background_color = color_tuple
 
-    def run_in_thread(self):
-        """Runs the rendering loop in a separate thread."""
-        import threading
-        render_thread = threading.Thread(target=self.run)
-        render_thread.start()
-
     def run(self):
         """The main rendering loop."""
         self.running = True

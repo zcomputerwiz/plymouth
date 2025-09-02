@@ -1,8 +1,11 @@
 """
 Implementation of the 'Image' global object for the Plymouth scripting language.
 """
+import logging
 import pygame
 from .script_objects import Hash, Number, String, NativeFunction, Null, CallableObject
+
+logger = logging.getLogger(__name__)
 
 class ImageObject(Hash):
     """A script object that represents an image, holding a pygame.Surface."""
@@ -72,7 +75,7 @@ class ImageFactory:
 
         path = args[0].value
         if path.startswith("special://"):
-            print(f"Runtime Warning: Special path '{path}' not fully implemented, creating dummy surface.")
+            logger.warning(f"Special image path '{path}' not implemented, creating dummy surface.")
             surface = pygame.Surface((1, 1), pygame.SRCALPHA)
             return ImageObject(surface)
 
@@ -80,10 +83,10 @@ class ImageFactory:
         try:
             pygame.font.init()
             surface = pygame.image.load(full_path).convert_alpha()
+            logger.info(f"Successfully loaded image: '{full_path}'")
             return ImageObject(surface)
         except (pygame.error, FileNotFoundError) as e:
-            print(f"Runtime Warning: Could not load image '{full_path}': {e}")
-            # Return a dummy object instead of Null to prevent crashes
+            logger.warning(f"Could not load image '{full_path}', creating dummy surface. Error: {e}")
             surface = pygame.Surface((1, 1), pygame.SRCALPHA)
             return ImageObject(surface)
 
